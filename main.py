@@ -28,7 +28,7 @@ def main():
         CANVAS_WIDTH * CELL_SCALE + FEATMAPS_WIDTH_OFFSET, 
         CANVAS_HEIGHT * CELL_SCALE + BOTTOM_OFFSET
     ))
-    pygame.display.set_caption("MNIST Canvas")
+    pygame.display.set_caption("AI MNIST Canvas")
 
     model = CNN()
     model.load("models/cnn.pth")
