@@ -71,6 +71,8 @@ class CNN(nn.Module):
         print(f"Accuracy: {correct / total:.4f}")
 
     def load(self, path):
+        dir = os.path.dirname(path)
+        os.makedirs(dir, exist_ok=True)
         self.load_state_dict(torch.load(path))
         self.eval()
 
