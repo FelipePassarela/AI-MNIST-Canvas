@@ -1,14 +1,14 @@
-import pygame
+import pygame as pg
 import numpy as np
 
 
 class ProbabilityDisplay:
-    def __init__(self, rect: pygame.Rect, bg_color: pygame.Color,
+    def __init__(self, rect: pg.Rect, bg_color: pg.Color,
                  bar_width=30, bar_gap=5, bar_max_height=140):
         self.rect = rect
         self.bg_color = bg_color
-        self.bar_font = pygame.font.Font(None, 30)
-        self.pred_font = pygame.font.Font(None, 40)
+        self.bar_font = pg.font.Font(None, 30)
+        self.pred_font = pg.font.Font(None, 40)
         self.bar_width = bar_width
         self.bar_gap = bar_gap
         self.bar_max_height = bar_max_height
@@ -25,14 +25,14 @@ class ProbabilityDisplay:
 
         for i, p in enumerate(probas):
             bar_height = int(p * self.bar_max_height)
-            bar_rect = pygame.Rect(
+            bar_rect = pg.Rect(
                 self.rect.x + i * (self.bar_width + self.bar_gap),
                 self.rect.y + self.rect.height - bar_height - self.bar_font.get_height(),
                 self.bar_width,
                 bar_height
             )
             color = (255, 0, 0) if i == highest_bar_idx else (0, 255, 0)
-            pygame.draw.rect(screen, color, bar_rect)
+            pg.draw.rect(screen, color, bar_rect)
             self.draw_text(
                 screen,
                 str(i), self.bar_font,

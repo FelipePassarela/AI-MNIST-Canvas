@@ -1,4 +1,4 @@
-import pygame
+import pygame as pg
 from utils.canvas_display import CanvasDisplay
 from utils.probability_display import ProbabilityDisplay
 from utils.feature_maps_display import FeatureMapsDisplay
@@ -22,25 +22,26 @@ FEATMAPS_CMAP = "inferno"
 
 
 def main():
-    pygame.init()
+    pg.init()
     
-    screen = pygame.display.set_mode((
+    screen = pg.display.set_mode((
         CANVAS_WIDTH * CELL_SCALE + FEATMAPS_WIDTH_OFFSET, 
         CANVAS_HEIGHT * CELL_SCALE + BOTTOM_OFFSET
     ))
-    pygame.display.set_caption("AI MNIST Canvas")
+    pg.display.set_caption("AI MNIST Canvas")
+    clock = pg.time.Clock()
 
     model = CNN()
     model.load("models/cnn.pth")
 
     canvas = CanvasDisplay(CANVAS_WIDTH, CANVAS_HEIGHT, CELL_SCALE, BRUSH_COLOR, CANVAS_BG_COLOR)
     proba_display = ProbabilityDisplay(
-        pygame.Rect(0, CANVAS_HEIGHT * CELL_SCALE, CANVAS_WIDTH * CELL_SCALE, BOTTOM_OFFSET),
+        pg.Rect(0, CANVAS_HEIGHT * CELL_SCALE, CANVAS_WIDTH * CELL_SCALE, BOTTOM_OFFSET),
         PROBAS_BG_COLOR,
         BAR_WIDTH, BAR_GAP, BAR_MAX_HEIGHT
     )
     featmaps_display = FeatureMapsDisplay(
-        pygame.Rect(CANVAS_WIDTH * CELL_SCALE, 0, FEATMAPS_WIDTH_OFFSET, CANVAS_HEIGHT * CELL_SCALE + BOTTOM_OFFSET),
+        pg.Rect(CANVAS_WIDTH * CELL_SCALE, 0, FEATMAPS_WIDTH_OFFSET, CANVAS_HEIGHT * CELL_SCALE + BOTTOM_OFFSET),
         cmap=FEATMAPS_CMAP
     )
 
@@ -52,26 +53,26 @@ def main():
     conv1_featmap, conv2_featmap = [], []
     
     while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
                 running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+            elif event.type == pg.MOUSEBUTTONDOWN:
                 drawing = True
-            elif event.type == pygame.MOUSEBUTTONUP:
+            elif event.type == pg.MOUSEBUTTONUP:
                 drawing = False
                 last_pos = None
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_c:
+            elif event.type == pg.KEYDOWN:
+                if event.key == pg.K_c:
                     canvas.clear()
         
         if drawing:
-            x, y = pygame.mouse.get_pos()
+            x, y = pg.mouse.get_pos()
             x, y = x // CELL_SCALE, y // CELL_SCALE
             if (x, y) != last_pos:
                 canvas.paint(x, y)
                 last_pos = (x, y)
 
-        current_time = pygame.time.get_ticks()
+        current_time = pg.time.get_ticks()
         if drawing and current_time - last_time_predict > PREDICT_INTERVAL:
             image = canvas.grid
             probas, conv1_featmap, conv2_featmap = model.predict(image)
@@ -80,10 +81,11 @@ def main():
         canvas.draw(screen, 0, 0)
         proba_display.draw(screen, probas)
         featmaps_display.draw(screen, (*conv1_featmap, *conv2_featmap))
+        pg.display.update()
 
-        pygame.display.update()
+        clock.tick(60)
 
-    pygame.quit()
+    pg.quit()
 
 
 if __name__ == '__main__':

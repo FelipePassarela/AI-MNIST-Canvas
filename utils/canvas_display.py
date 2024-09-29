@@ -1,5 +1,5 @@
 import numpy as np
-import pygame
+import pygame as pg
 
 
 class CanvasDisplay:
@@ -22,7 +22,7 @@ class CanvasDisplay:
         self.grid[mask] = np.minimum(self.grid[mask] + intensities[mask], max_intensity)
 
     def draw(self, screen, x, y):
-        canvas_rect = pygame.Rect(
+        canvas_rect = pg.Rect(
             x, y, 
             self.width * self.cell_scale, 
             self.height * self.cell_scale
@@ -35,11 +35,11 @@ class CanvasDisplay:
                     continue
 
                 color = [c * self.grid[i, j] for c in self.brush_color]
-                cell_rect = pygame.Rect(
+                cell_rect = pg.Rect(
                     j * self.cell_scale, 
                     i * self.cell_scale, 
                     self.cell_scale, self.cell_scale)
-                pygame.draw.rect(screen, color, cell_rect)
+                pg.draw.rect(screen, color, cell_rect)
 
     def print(self):
         for row in self.grid:

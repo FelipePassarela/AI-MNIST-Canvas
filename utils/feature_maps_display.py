@@ -1,10 +1,10 @@
-import pygame
+import pygame as pg
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 class FeatureMapsDisplay:
-    def __init__(self, rect: pygame.Rect, cmap="gray"):
+    def __init__(self, rect: pg.Rect, cmap="gray"):
         self.rect = rect
         self.cmap = plt.get_cmap(cmap)
 
@@ -23,16 +23,15 @@ class FeatureMapsDisplay:
         for i, pos in enumerate(self._positions):
             if i >= n_featmaps:
                 break
-
             featmap = self.normalize_and_apply_cmap(featmaps[i])
-            featmap_surface = pygame.surfarray.make_surface(featmap)
-            featmap_surface = pygame.transform.scale(featmap_surface, (self._featmap_width, self._featmap_height))
+            featmap_surface = pg.surfarray.make_surface(featmap)
+            featmap_surface = pg.transform.scale(featmap_surface, (self._featmap_width, self._featmap_height))
             screen.blit(featmap_surface, pos)
 
     def normalize_and_apply_cmap(self, featmap):
         featmap = np.array(featmap).T
         featmap -= featmap.min()
-        featmap /= featmap.max() + 1e-8
+        featmap /= featmap.max() or 1
         featmap = np.uint8(featmap * 255)
         featmap = self.cmap(featmap)[..., :3] * 255
         return np.uint8(featmap)
