@@ -49,8 +49,6 @@ def main():
     drawing = False
     last_pos = None
     last_time_predict = 0
-    probas = [0] * 10
-    conv1_featmap, conv2_featmap = [], []
     
     while running:
         for event in pg.event.get():
@@ -76,14 +74,16 @@ def main():
         if drawing and current_time - last_time_predict > PREDICT_INTERVAL:
             image = canvas.grid
             probas, conv1_featmap, conv2_featmap = model.predict(image)
+
+            featmaps_display.draw(screen, (*conv1_featmap, *conv2_featmap))
+            proba_display.draw(screen, probas)
+            
             last_time_predict = current_time
         
         canvas.draw(screen, 0, 0)
-        proba_display.draw(screen, probas)
-        featmaps_display.draw(screen, (*conv1_featmap, *conv2_featmap))
         pg.display.update()
 
-        clock.tick(60)
+        clock.tick(120)
 
     pg.quit()
 
