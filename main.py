@@ -71,7 +71,8 @@ def main():
                 last_pos = (x, y)
 
         current_time = pg.time.get_ticks()
-        if drawing and current_time - last_time_predict > PREDICT_INTERVAL:
+        is_time_for_prediction = current_time - last_time_predict > PREDICT_INTERVAL
+        if drawing and is_time_for_prediction:
             image = canvas.grid
             probas, conv1_featmap, conv2_featmap = model.predict(image)
 

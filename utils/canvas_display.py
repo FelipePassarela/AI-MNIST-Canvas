@@ -15,13 +15,13 @@ class CanvasDisplay:
         self.grid.fill(0)
 
     def paint(self, x, y, brush_size=1.8, max_intensity=1.0):
+        if x < 0 or x >= self.width or y < 0 or y >= self.height:
+            return
+
         min_x = max(int(x - brush_size), 0)
         max_x = min(int(x + brush_size), self.width - 1)
         min_y = max(int(y - brush_size), 0)
         max_y = min(int(y + brush_size), self.height - 1)
-
-        if min_x > max_x or min_y > max_y:
-            return
 
         y_indices, x_indices = np.indices((max_y - min_y + 1, max_x - min_x + 1))
         y_indices += min_y
