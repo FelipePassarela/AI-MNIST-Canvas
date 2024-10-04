@@ -27,6 +27,8 @@ class CNN(nn.Module):
             transforms.Normalize((0.5,), (0.5,))
         ])
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     def forward(self, x):
         x = self.pool(self.relu(self.bn1(self.conv1(x))))
         conv1_featmaps = x
@@ -39,12 +41,15 @@ class CNN(nn.Module):
         return x, conv1_featmaps, conv2_featmaps
     
     def train_model(self, train_loader, epochs=10, learning_rate=0.001):
+        self.to(self.device)
+
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.parameters(), lr=learning_rate)
         
         for epoch in range(epochs):
             running_loss = 0.0
             for image, label in train_loader:
+                image, label = image.to(self.device), label.to(self.device)
                 output, _, _ = self(image)
                 loss = criterion(output, label)
 
@@ -59,11 +64,14 @@ class CNN(nn.Module):
         torch.save(self.state_dict(), "models/cnn.pth")
 
     def evaluate(self, test_loader):
+        self.to(self.device)
         self.eval()
+
         correct = 0
         total = 0
         with torch.no_grad():
             for image, label in test_loader:
+                image, label = image.to(self.device), label.to(self.device)
                 output, _, _ = self(image)
                 _, predicted = torch.max(output, 1)
                 total += label.size(0)
@@ -74,11 +82,14 @@ class CNN(nn.Module):
         dir = os.path.dirname(path)
         os.makedirs(dir, exist_ok=True)
         self.load_state_dict(torch.load(path))
+        self.to(self.device)
         self.eval()
+        print(f"Model loaded with device: {self.device}")
 
     def predict(self, image):
+        self.to(self.device)
         with torch.no_grad():
-            image = self.transform(image).unsqueeze(0)
+            image = self.transform(image).unsqueeze(0).to(self.device)
             output, conv1_featmaps, conv2_featmaps = self(image)
             probas = torch.exp(output)
             return (
