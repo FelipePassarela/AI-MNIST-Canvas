@@ -34,7 +34,7 @@ class CNN(nn.Module):
         
         x = torch.flatten(x, 1)
         x = F.dropout(F.relu(self.fc1(x)))
-        x = F.log_softmax(self.fc2(x), dim=1)
+        x = self.fc2(x)
         return x, conv1_featmaps, conv2_featmaps
     
     def train_model(self, train_loader, test_loader, epochs=10, learning_rate=0.001):
@@ -89,7 +89,7 @@ class CNN(nn.Module):
         with torch.no_grad():
             image = self.transform(image).unsqueeze(0).to(self.device)
             output, conv1_featmaps, conv2_featmaps = self(image)
-            probas = torch.exp(output)
+            probas = F.softmax(output)
             return (
                 probas.squeeze().tolist(), 
                 conv1_featmaps.squeeze().tolist(), 
