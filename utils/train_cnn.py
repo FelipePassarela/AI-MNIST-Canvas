@@ -11,14 +11,20 @@ import os
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, padding='same')
-        self.bn1 = nn.BatchNorm2d(32)
+        self.conv1 = nn.Conv2d(1, 32, 5, padding='same')
+        self.bn_conv1 = nn.BatchNorm2d(32)
 
         self.conv2 = nn.Conv2d(32, 64, 3, padding='same')
-        self.bn2 = nn.BatchNorm2d(64)
+        self.bn_conv2 = nn.BatchNorm2d(64)
 
-        self.fc1 = nn.Linear(64 * 7 * 7, 128)
-        self.fc2 = nn.Linear(128, 10)
+        self.conv3 = nn.Conv2d(64, 128, 2, padding='same')
+        self.bn_conv3 = nn.BatchNorm2d(128)
+
+        self.fc1 = nn.Linear(128 * 3 * 3, 256)
+        self.bn_fc1 = nn.BatchNorm1d(256)
+        self.fc2 = nn.Linear(256, 128)
+        self.bn_fc2 = nn.BatchNorm1d(128)
+        self.fc3 = nn.Linear(128, 10)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.transform = transforms.Compose([
@@ -27,14 +33,17 @@ class CNN(nn.Module):
         ])
 
     def forward(self, x):
-        conv1_featmaps = F.relu(self.bn1(self.conv1(x)))
+        conv1_featmaps = F.relu(self.bn_conv1(self.conv1(x)))
         x = F.max_pool2d(conv1_featmaps, 2)
-        conv2_featmaps = F.relu(self.bn2(self.conv2(x)))
+        conv2_featmaps = F.relu(self.bn_conv2(self.conv2(x)))
         x = F.max_pool2d(conv2_featmaps, 2)
+        x = F.relu(self.bn_conv3(self.conv3(x)))
+        x = F.max_pool2d(x, 2)
         
         x = torch.flatten(x, 1)
-        x = F.dropout(F.relu(self.fc1(x)))
-        x = self.fc2(x)
+        x = F.dropout(F.relu(self.bn_fc1(self.fc1(x))))
+        x = F.dropout(F.relu(self.bn_fc2(self.fc2(x))))
+        x = self.fc3(x)
         return x, conv1_featmaps, conv2_featmaps
     
     def train_model(self, train_loader, test_loader, epochs=10, learning_rate=0.001):
