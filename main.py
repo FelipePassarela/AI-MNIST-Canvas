@@ -1,4 +1,5 @@
 import pygame as pg
+import torch
 from utils.canvas_display import CanvasDisplay
 from utils.probability_display import ProbabilityDisplay
 from utils.feature_maps_display import FeatureMapsDisplay
@@ -18,7 +19,7 @@ PROBAS_BG_COLOR = (255, 255, 255)
 
 PREDICT_INTERVAL = 25
 FEATMAPS_WIDTH_OFFSET = 800
-FEATMAPS_CMAP = "inferno"
+FEATMAPS_CMAP = "gray"
 
 
 def main():
@@ -31,7 +32,8 @@ def main():
     pg.display.set_caption("AI MNIST Canvas")
     clock = pg.time.Clock()
 
-    model = CNN()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = CNN().to(device)
     model.load("models/cnn.pth")
 
     canvas = CanvasDisplay(CANVAS_WIDTH, CANVAS_HEIGHT, CELL_SCALE, BRUSH_COLOR, CANVAS_BG_COLOR)
@@ -72,11 +74,11 @@ def main():
 
         current_time = pg.time.get_ticks()
         is_time_for_prediction = current_time - last_time_predict > PREDICT_INTERVAL
-        if drawing and is_time_for_prediction:
+        if is_time_for_prediction:
             image = canvas.grid
-            probas, conv1_featmap, conv2_featmap = model.predict(image)
+            probas, featmaps = model.predict(image)
 
-            featmaps_display.draw(screen, (*conv1_featmap, *conv2_featmap))
+            featmaps_display.draw(screen, (*featmaps[0], *featmaps[1]))
             proba_display.draw(screen, probas)
             
             last_time_predict = current_time

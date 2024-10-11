@@ -11,108 +11,145 @@ import os
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 5, padding='same')
-        self.bn_conv1 = nn.BatchNorm2d(32)
 
-        self.conv2 = nn.Conv2d(32, 64, 3, padding='same')
-        self.bn_conv2 = nn.BatchNorm2d(64)
+        self.convs = nn.Sequential(
+            nn.Conv2d(1, 32, 5, padding='same'),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            
+            nn.Conv2d(32, 64, 3, padding='same'),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
 
-        self.conv3 = nn.Conv2d(64, 128, 2, padding='same')
-        self.bn_conv3 = nn.BatchNorm2d(128)
+            nn.Conv2d(64, 128, 3, padding='same'),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+        )
 
-        self.fc1 = nn.Linear(128 * 3 * 3, 256)
-        self.bn_fc1 = nn.BatchNorm1d(256)
-        self.fc2 = nn.Linear(256, 128)
-        self.bn_fc2 = nn.BatchNorm1d(128)
-        self.fc3 = nn.Linear(128, 10)
+        self.fcs = nn.Sequential(
+            nn.Flatten(),
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            nn.Linear(128 * 3 * 3, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(),
+
+            nn.Linear(256, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Dropout(),
+
+            nn.Linear(128, 10)
+        )
+
         self.transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
 
     def forward(self, x):
-        conv1_featmaps = F.relu(self.bn_conv1(self.conv1(x)))
-        x = F.max_pool2d(conv1_featmaps, 2)
-        conv2_featmaps = F.relu(self.bn_conv2(self.conv2(x)))
-        x = F.max_pool2d(conv2_featmaps, 2)
-        x = F.relu(self.bn_conv3(self.conv3(x)))
-        x = F.max_pool2d(x, 2)
-        
-        x = torch.flatten(x, 1)
-        x = F.dropout(F.relu(self.bn_fc1(self.fc1(x))))
-        x = F.dropout(F.relu(self.bn_fc2(self.fc2(x))))
-        x = self.fc3(x)
-        return x, conv1_featmaps, conv2_featmaps
+        conv1_featmaps = self.convs[0](x)
+        conv2_featmaps = self.convs[1:5](conv1_featmaps)
+        conv3_featmaps = self.convs[5:9](conv2_featmaps)
+        logits = self.convs[9:](conv3_featmaps)
+        logits = self.fcs(logits)
+        return logits, (conv1_featmaps, conv2_featmaps, conv3_featmaps)
     
-    def train_model(self, train_loader, test_loader, epochs=10, learning_rate=0.001):
-        self.to(self.device)
+    def train_step(self, dataloader, criterion, optimizer):
+        self.train()
+        device = next(self.parameters()).device
 
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        total = 0
+        correct = 0
+        running_loss = 0
+        n_batches = len(dataloader)
+
+        for i, (img, label) in enumerate(dataloader):
+            img, label = img.to(device), label.to(device)
+            pred, _ = self(img)
+            loss = criterion(pred, label)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            total += label.size(0)
+            correct += (pred.argmax(1) == label).sum().item()
+            running_loss += loss.item()
+
+            if i % 99 == 0 or i == n_batches - 1:
+                train_loss = running_loss / (i + 1)
+                print(f"\r\tBatch [{i + 1}/{n_batches}] - Train Loss: {train_loss:.4f}", end='')
+        print(f" - Train Accuracy: {100 * correct / total:.2f}%")
         
-        for epoch in range(epochs):
-            running_loss = 0.0
-            for image, label in train_loader:
-                image, label = image.to(self.device), label.to(self.device)
-                output, _, _ = self(image)
-                loss = criterion(output, label)
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-                running_loss += loss.item()
-            print(f"Epoch {epoch + 1}/{epochs}, Loss: {running_loss / len(train_loader):.4f}, ", end="")
-            self.evaluate(test_loader)
-
-        os.makedirs("models", exist_ok=True)
-        torch.save(self.state_dict(), "models/cnn.pth")
-
-    def evaluate(self, test_loader):
-        self.to(self.device)
+    def val_step(self, dataloader, criterion):
         self.eval()
+        device = next(self.parameters()).device
 
         correct = 0
         total = 0
+        running_loss = 0
+        n_batches = len(dataloader)
+
         with torch.no_grad():
-            for image, label in test_loader:
-                image, label = image.to(self.device), label.to(self.device)
-                output, _, _ = self(image)
-                _, predicted = torch.max(output, 1)
+            for i, (img, label) in enumerate(dataloader):
+                img, label = img.to(device), label.to(device)
+                pred, _ = self(img)
+                loss = criterion(pred, label)
+
                 total += label.size(0)
-                correct += (predicted == label).sum().item()
-        print(f"Accuracy: {correct / total:.4f}")
+                correct += (pred.argmax(1) == label).sum().item()
+                running_loss += loss.item()
+
+                if i % 100 == 0 or i == len(dataloader) - 1:
+                    val_loss = running_loss / (i + 1)
+                    print(f"\r\tBatch [{i + 1}/{n_batches}] - Val Loss: {val_loss:.4f}", end='')
+        print(f" - Val Accuracy: {100 * correct / total:.2f}%")
+
+        accuracy = correct / total
+        return loss / len(dataloader.dataset), accuracy
 
     def load(self, path):
         dir = os.path.dirname(path)
         os.makedirs(dir, exist_ok=True)
         self.load_state_dict(torch.load(path))
-        self.to(self.device)
         self.eval()
-        print(f"Model loaded with device: {self.device}")
+
+    def save(self, path):
+        dir = os.path.dirname(path)
+        os.makedirs(dir, exist_ok=True)
+        torch.save(self.state_dict(), path)
 
     def predict(self, image):
-        self.to(self.device)
+        device = next(self.parameters()).device
         with torch.no_grad():
-            image = self.transform(image).unsqueeze(0).to(self.device)
-            output, conv1_featmaps, conv2_featmaps = self(image)
-            probas = F.softmax(output)
-            return (
-                probas.squeeze().tolist(), 
-                conv1_featmaps.squeeze().tolist(), 
-                conv2_featmaps.squeeze().tolist()
-            )
+            image = self.transform(image).unsqueeze(0).to(device)
+            output, featmaps = self(image)
+            probas = F.softmax(output).squeeze(0).cpu().numpy()
+            featmaps = [fm.squeeze(0).cpu().numpy() for fm in featmaps]
+        return probas, featmaps
 
 
 if __name__ == '__main__':
-    cnn = CNN()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = CNN().to(device)
 
-    train_set = torchvision.datasets.MNIST(root="data", train=True, download=True, transform=cnn.transform)
-    test_set = torchvision.datasets.MNIST(root="data", train=False, download=True, transform=cnn.transform)
-    train_loader = DataLoader(train_set, batch_size=64, shuffle=True)
-    test_loader = DataLoader(test_set, batch_size=64, shuffle=False)
+    train_set = torchvision.datasets.MNIST(root="data", train=True, download=True, transform=model.transform)
+    test_set = torchvision.datasets.MNIST(root="data", train=False, download=True, transform=model.transform)
+    train_loader = DataLoader(train_set, batch_size=64, shuffle=True, num_workers=4)
+    test_loader = DataLoader(test_set, batch_size=64, shuffle=False, num_workers=4)
 
-    cnn.train_model(train_loader, test_loader)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    epochs = 10
+
+    for epoch in range(epochs):
+        print(f"Epoch [{epoch + 1}/{epochs}]:")
+        model.train_step(train_loader, criterion, optimizer)
+        model.val_step(test_loader, criterion)
+
+    model.save("models/cnn.pth")
     
