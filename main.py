@@ -1,9 +1,9 @@
 import pygame as pg
 import torch
-from utils.canvas_display import CanvasDisplay
-from utils.probability_display import ProbabilityDisplay
-from utils.feature_maps_display import FeatureMapsDisplay
-from utils.train_cnn import CNN
+from displays.canvas_display import CanvasDisplay
+from displays.probability_display import ProbabilityDisplay
+from displays.feature_maps_display import FeatureMapsDisplay
+from mnist_cnn.MnistCNN import MnistCNN
 
 
 CANVAS_WIDTH, CANVAS_HEIGHT = 28, 28
@@ -33,8 +33,9 @@ def main():
     clock = pg.time.Clock()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = CNN().to(device)
-    model.load("models/cnn.pth")
+    model = MnistCNN().to(device)
+    model.load_state_dict(torch.load("models/cnn.pth", map_location=device, weights_only=True))
+    model.eval()
 
     canvas = CanvasDisplay(CANVAS_WIDTH, CANVAS_HEIGHT, CELL_SCALE, BRUSH_COLOR, CANVAS_BG_COLOR)
     proba_display = ProbabilityDisplay(
@@ -74,11 +75,12 @@ def main():
 
         current_time = pg.time.get_ticks()
         is_time_for_prediction = current_time - last_time_predict > PREDICT_INTERVAL
+
         if is_time_for_prediction:
             image = canvas.grid
             probas, featmaps = model.predict(image)
 
-            featmaps_display.draw(screen, (*featmaps[0], *featmaps[1]))
+            featmaps_display.draw(screen, (*featmaps[0][:32], *featmaps[1][:16], *featmaps[2][:16]))
             proba_display.draw(screen, probas)
             
             last_time_predict = current_time
