@@ -13,7 +13,7 @@ pip install -r requirements.txt
 Train the neural network:
 
 ```bash
-python ./utils/train_cnn.py
+python -m mnist_cnn.train
 ```
 
 Run the application:
